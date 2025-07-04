@@ -1,5 +1,5 @@
 import subprocess
-
+import os
 import numpy as np
 from network.generate_cmds import generate_cmds
 from clients.run_clients import run_benchmark
@@ -8,15 +8,16 @@ from analysis.analyze_ack import *
 from analysis.changepoint import Changepoint
 from analysis.eval_changepoint import *
 
-CONFIG_FILE = './param.json'
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'param.json')
 
 def main():
+    netif = 'en0'
     # Run network commands
-    cmds = generate_cmds(CONFIG_FILE)
+    cmds = generate_cmds(netif, CONFIG_FILE)
     subprocess.run(cmds, capture_output=True, shell=True)
 
     # Run benchmarks
-    clients: dict[str, list[str]] = run_benchmark(CONFIG_FILE)
+    clients: dict[str, list[str]] = run_benchmark(netif, CONFIG_FILE)
 
     # Generate plots
     print("clients:", clients)
@@ -59,6 +60,6 @@ def test_changepoint_algorithm():
                            alg = Changepoint.CUSUM, min_size=min_size, jump=jump,
                            sigma=sigma, width=width)
 
-# main()
-test_changepoint_algorithm()
+main()
+# test_changepoint_algorithm()
 # generate_plot_quic_csv("./csv/meta-5MB-delay0-loss0.json")
