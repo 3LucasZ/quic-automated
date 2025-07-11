@@ -14,7 +14,7 @@ DIRS = [TMP_PCAP_DIR, PCAP_OUT_DIR, SSL_KEY_LOG_DIR]
 
 # PROXYGEN_EXEC_PATH = '/home/shchien/proxygen/proxygen/_build/proxygen/httpserver/hq'
 PROXYGEN_EXEC_PATH = '/opt/homebrew/Cellar/proxygen/2025.06.30.00/bin/hq'
-NGTCP2_EXEC_PATH = '/home/shchien/ngtcp2/examples/wsslclient'
+NGTCP2_EXEC_PATH = '/Users/lucaszheng/Documents/GitHub/quic-automated/ngtcp2/examples/wssclient-shared'
 
 # Make all directories in DIRS (if they don't exist)
 def make_dirs(DIRS: list[str]):

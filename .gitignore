@@ -5,3 +5,5 @@ pcap/
 ssl/
 plots/
 ngtcp2/
+/csv
+network/loss-0.1-delay-50-bw-100-jitter-30-burstingress-75-burstegress-50.sh
