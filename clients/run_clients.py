@@ -14,7 +14,7 @@ DIRS = [TMP_PCAP_DIR, PCAP_OUT_DIR, SSL_KEY_LOG_DIR]
 
 # PROXYGEN_EXEC_PATH = '/home/shchien/proxygen/proxygen/_build/proxygen/httpserver/hq'
 PROXYGEN_EXEC_PATH = '/opt/homebrew/Cellar/proxygen/2025.06.30.00/bin/hq'
-NGTCP2_EXEC_PATH = '/Users/lucaszheng/Documents/GitHub/quic-automated/ngtcp2/examples/wssclient-shared'
+NGTCP2_EXEC_PATH = '/Users/lucaszheng/Documents/GitHub/quic-automated/ngtcp2/examples/osslclient'
 
 # Make all directories in DIRS (if they don't exist)
 def make_dirs(DIRS: list[str]):
@@ -82,12 +82,12 @@ def client_cmds(client: str, endpoint: str, url_host: str, url_port: str | None,
             cmds.append(f'--port={url_port or 443}')  # port (default to 443)
             cmds.append(f'--path={url_path}')         # path
 
-        # case 'ngtcp2_h3':  
-        #     cmds.append(NGTCP2_EXEC_PATH)
-        #     cmds.append('--exit-on-all-streams-close')  # close all streams upon exit
-        #     cmds.append(f'{url_host}')         # host
-        #     cmds.append(f'{url_port or 443}')  # port (default to 443)
-        #     cmds.append(f'{endpoint}')         # complete url
+        case 'ngtcp2_h3':  
+            cmds.append(NGTCP2_EXEC_PATH)
+            cmds.append('--exit-on-all-streams-close')  # close all streams upon exit
+            cmds.append(f'{url_host}')         # host
+            cmds.append(f'{url_port or 443}')  # port (default to 443)
+            cmds.append(f'{endpoint}')         # complete url
 
         case _:  # invalid client provided, return []
             pass
