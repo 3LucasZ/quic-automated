@@ -75,4 +75,4 @@ WORKDIR /app
 COPY . .
 COPY docker/param.json .
 # Run automatically when container starts
-CMD ["python", "main.py"]
+# CMD ["python", "main.py"]
