@@ -1,6 +1,5 @@
 {
   "clients": [
-    "curl_h2",
     "proxygen_h3",
     "ngtcp2_h3"
   ],
@@ -14,5 +13,5 @@
     "burst_ingress": 75,
     "burst_egress": 50
   },
-  "netif": "en0"
+  "netif": "eth0"
 }

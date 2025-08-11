@@ -10,14 +10,14 @@ from analysis.eval_changepoint import *
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'param.json')
 
+
 def main():
-    netif = 'en0'
     # Run network commands
-    cmds = generate_cmds(netif, CONFIG_FILE)
+    cmds = generate_cmds(CONFIG_FILE)
     subprocess.run(cmds, capture_output=True, shell=True)
 
     # Run benchmarks
-    clients: dict[str, list[str]] = run_benchmark(netif, CONFIG_FILE)
+    clients: dict[str, list[str]] = run_benchmark(CONFIG_FILE)
 
     # Generate plots
     print("clients:", clients)
@@ -30,35 +30,38 @@ def main():
                 # generate_plot_quic(json_file, client=client)
                 generate_csv_quic(json_file, client=client)
 
+
 def test_changepoint_algorithm():
     csv_file = "./csv/meta-5MB-delay0-loss0.json"
-    correct_bkps = np.array([10, 61, 83, 107, 113, 143, 167, 231, 267, 310, 342])
+    correct_bkps = np.array(
+        [10, 61, 83, 107, 113, 143, 167, 231, 267, 310, 342])
     raw = read_csv_quic(csv_file)
     if raw is None:
         return
-    
+
     rtts = raw['rtts']
     cum_acks = raw['cum_acks']
 
-    err      = None
+    err = None
     min_size = None
-    jump     = None
-    sigma    = None
-    width    = None
+    jump = None
+    sigma = None
+    width = None
 
     # (err, min_size, jump) = best_params_pelt(rtts, cum_acks, correct_bkps)
     # (err, sigma) = best_params_binseg(rtts, cum_acks, correct_bkps)
     # (err, sigma) = best_params_bottomup(rtts, cum_acks, correct_bkps)
     # (err, sigma, width) = best_params_window(rtts, cum_acks, correct_bkps)
-    
+
     print(f'err: {err}')
     print(f'min_size: {min_size}, jump: {jump}')
     print(f'sigma: {sigma}')
     print(f'width: {width}')
 
-    generate_plot_quic_csv("./csv/meta-5MB-delay0-loss0.json", correct_bkps, 
-                           alg = Changepoint.CUSUM, min_size=min_size, jump=jump,
+    generate_plot_quic_csv("./csv/meta-5MB-delay0-loss0.json", correct_bkps,
+                           alg=Changepoint.CUSUM, min_size=min_size, jump=jump,
                            sigma=sigma, width=width)
+
 
 main()
 # test_changepoint_algorithm()

@@ -3,6 +3,7 @@ import os
 
 ROOT_TRAFFIC_RATE_LIMIT = 10000000.0  # 10 Gbps
 
+
 def write_cmds(f, cmds: list[str]):
     for cmd in cmds:
         f.write(f'{cmd}\n')
@@ -10,30 +11,33 @@ def write_cmds(f, cmds: list[str]):
 
 # Generates shell commands for provided network parameters.
 # Both writes command to file and returns commands as list of strings.
-def generate_cmds(netif, config_file: str) -> list[str]:
+
+
+def generate_cmds(config_file: str) -> list[str]:
     # Read JSON file containing network parameters
     with open(config_file) as f:
         d = json.load(f)
-    
+    netif = d.get("netif")
+
     network_configs: dict[str, int] = d.get('network')
     if network_configs is None:
         print("Error: network configs not provided, exiting.")
         return
-    
+
     # Extract network parameters
-    loss         : float = network_configs.get('loss')
-    delay        : int   = network_configs.get('delay')
-    bw           : int   = network_configs.get('bw')
-    jitter       : int   = network_configs.get('jitter')
-    burst_ingress: int   = network_configs.get('burst_ingress')
-    burst_egress : int   = network_configs.get('burst_egress')
-    
+    loss: float = network_configs.get('loss')
+    delay: int = network_configs.get('delay')
+    bw: int = network_configs.get('bw')
+    jitter: int = network_configs.get('jitter')
+    burst_ingress: int = network_configs.get('burst_ingress')
+    burst_egress: int = network_configs.get('burst_egress')
+
     # Generate commands for each parameter
-    include_loss          = (loss != 0)
-    include_delay         = (delay != 0)
-    include_jitter        = (jitter != 0)
+    include_loss = (loss != 0)
+    include_delay = (delay != 0)
+    include_jitter = (jitter != 0)
     include_burst_ingress = (burst_ingress != 0)
-    include_burst_egress  = (burst_egress != 0)
+    include_burst_egress = (burst_egress != 0)
 
     loss_str = ' loss {:.6f}%'.format(loss) if include_loss else ''
     delay_str = f' delay {delay//2}.0ms' if include_delay else ''
@@ -61,21 +65,22 @@ def generate_cmds(netif, config_file: str) -> list[str]:
     # delete root qdisc on netif
     cmds.append(f'/sbin/tc qdisc del dev {netif} root')
     # delete ingress qdisc on netif
-    cmds.append(f'/sbin/tc qdisc del dev {netif} ingress') 
+    cmds.append(f'/sbin/tc qdisc del dev {netif} ingress')
     # delete ingress qdisc on netif
-    cmds.append(f'/sbin/tc qdisc del dev {netif} ingress') 
+    cmds.append(f'/sbin/tc qdisc del dev {netif} ingress')
     # delete root qdisc on IFB
-    cmds.append('/sbin/tc qdisc del dev ifb0 root')  
-    # disable IFB interface    
-    cmds.append('/usr/bin/ip link set dev ifb0 down')    
+    cmds.append('/sbin/tc qdisc del dev ifb0 root')
+    # disable IFB interface
+    cmds.append('/usr/bin/ip link set dev ifb0 down')
     # delete IFB interface
-    cmds.append('/usr/bin/ip link delete ifb0 type ifb') 
+    cmds.append('/usr/bin/ip link delete ifb0 type ifb')
     write_cmds(f, cmds)
 
     # Setup HTB (hierarchical token bucket) and netem on netif root
     cmds = []
     # add qdisc to eht0 root with handle 1a64: and classID 1
-    cmds.append(f'/sbin/tc qdisc add dev {netif} root handle 1a64: htb default 1')
+    cmds.append(
+        f'/sbin/tc qdisc add dev {netif} root handle 1a64: htb default 1')
     # create HTB class 1a64:1
     cmds.append((f'/sbin/tc class add dev {netif} parent 1a64: '
                  f'classid 1a64:1 htb rate {ROOT_TRAFFIC_RATE_LIMIT}kbit'))
@@ -112,7 +117,7 @@ def generate_cmds(netif, config_file: str) -> list[str]:
     cmds = []
     # add qdisc to IFB root with handle 1a64: and classID 1
     cmds.append('/sbin/tc qdisc add dev ifb0 root handle 1a64: htb default 1')
-    # create HTB class 1a64:1 
+    # create HTB class 1a64:1
     cmds.append(('/sbin/tc class add dev ifb0 parent 1a64: '
                 f'classid 1a64:1 htb rate {ROOT_TRAFFIC_RATE_LIMIT}kbit'))
     # create another HTB class 1a64:104 with provided bw
@@ -129,6 +134,6 @@ def generate_cmds(netif, config_file: str) -> list[str]:
     write_cmds(f, cmds)
 
     return cmds
-    
+
 # test
 # generate_cmds('./param.json')

@@ -4,25 +4,35 @@ import time
 import pathlib
 import subprocess
 from urllib.parse import urlparse
+from dotenv import load_dotenv
+
+# Load variables from the .env file into the environment
+# PROXYGEN_EXEC_PATH = '/home/shchien/proxygen/proxygen/_build/proxygen/httpserver/hq'
+# PROXYGEN_EXEC_PATH = '/opt/homebrew/Cellar/proxygen/2025.06.30.00/bin/hq'
+# NGTCP2_EXEC_PATH = '/Users/lucaszheng/Documents/GitHub/quic-automated/ngtcp2/examples/osslclient'
+load_dotenv()
+PROXYGEN_EXEC_PATH = os.getenv("PROXYGEN_EXEC_PATH")
+NGTCP2_EXEC_PATH = os.getenv("NGTCP2_EXEC_PATH")
 
 # Directories
 ROOT_DIR = pathlib.Path(__file__).parent.parent.absolute()
 TMP_PCAP_DIR = ROOT_DIR.joinpath('tmp')
 PCAP_OUT_DIR = ROOT_DIR.joinpath('pcap')
 SSL_KEY_LOG_DIR = ROOT_DIR.joinpath('ssl')
-DIRS = [TMP_PCAP_DIR, PCAP_OUT_DIR, SSL_KEY_LOG_DIR]   
+DIRS = [TMP_PCAP_DIR, PCAP_OUT_DIR, SSL_KEY_LOG_DIR]
 
-# PROXYGEN_EXEC_PATH = '/home/shchien/proxygen/proxygen/_build/proxygen/httpserver/hq'
-PROXYGEN_EXEC_PATH = '/opt/homebrew/Cellar/proxygen/2025.06.30.00/bin/hq'
-NGTCP2_EXEC_PATH = '/Users/lucaszheng/Documents/GitHub/quic-automated/ngtcp2/examples/osslclient'
 
 # Make all directories in DIRS (if they don't exist)
+
+
 def make_dirs(DIRS: list[str]):
     for DIR in DIRS:
         if not os.path.exists(DIR):
-            os.makedirs(DIR) 
+            os.makedirs(DIR)
 
 # Use tshark capture packets
+
+
 def run_pcap(netif: str, pcap_file: str, url_host: str, url_port: str | None, url_path: str, env):
     process = subprocess.Popen([
         'tshark',
@@ -31,20 +41,22 @@ def run_pcap(netif: str, pcap_file: str, url_host: str, url_port: str | None, ur
         '-i',
         netif,                     # capture on netif interface
         '-w',
-        f'{pcap_file}', # write to temp file
+        f'{pcap_file}',  # write to temp file
     ], env=env)
     return process
 
 # Convert pcap file into JSON, returns process exit
-def read_pcap(is_h3: bool, pcap_file: str, json_file: str, ssl_key_log_file: str, 
+
+
+def read_pcap(is_h3: bool, pcap_file: str, json_file: str, ssl_key_log_file: str,
               env) -> str:
     if is_h3:  # filter for QUIC packets
         cmd = ' '.join([
             'tshark',
             f'-r {pcap_file}',  # read pcap file
             '-T json',          # output format = JSON
-            f'-o tls.keylog_file:{ssl_key_log_file}', # points to TLS secrets
-            '--no-duplicate-keys', # combines all duplicate keys into one array
+            f'-o tls.keylog_file:{ssl_key_log_file}',  # points to TLS secrets
+            '--no-duplicate-keys',  # combines all duplicate keys into one array
             f'> {json_file}'   # write JSON file
         ])
     else:  # filter for TCP packets
@@ -58,23 +70,25 @@ def read_pcap(is_h3: bool, pcap_file: str, json_file: str, ssl_key_log_file: str
         ])
 
     output = subprocess.run([cmd],
-                            capture_output=True, 
+                            capture_output=True,
                             shell=True, env=env)
     return output
 
 # Generate commands for client targeting endpoint.
 # Returns [] if client string is invalid.
-def client_cmds(client: str, endpoint: str, url_host: str, url_port: str | None, 
+
+
+def client_cmds(client: str, endpoint: str, url_host: str, url_port: str | None,
                 url_path: str) -> list[str]:
     cmds = []
     match client:
         case 'curl_h2':
-            cmds.append('curl')      
+            cmds.append('curl')
             cmds.append('--http2')   # use http2
             cmds.append(endpoint)    # target endpoint
 
         case 'proxygen_h3':
-            cmds.append(PROXYGEN_EXEC_PATH)  
+            cmds.append(PROXYGEN_EXEC_PATH)
             cmds.append('--mode=client')              # cliet mode
             cmds.append('--protocol=h3')              # use http3
             cmds.append('--quic_version=1')           # use quic version 1
@@ -82,9 +96,10 @@ def client_cmds(client: str, endpoint: str, url_host: str, url_port: str | None,
             cmds.append(f'--port={url_port or 443}')  # port (default to 443)
             cmds.append(f'--path={url_path}')         # path
 
-        case 'ngtcp2_h3':  
+        case 'ngtcp2_h3':
             cmds.append(NGTCP2_EXEC_PATH)
-            cmds.append('--exit-on-all-streams-close')  # close all streams upon exit
+            # close all streams upon exit
+            cmds.append('--exit-on-all-streams-close')
             cmds.append(f'{url_host}')         # host
             cmds.append(f'{url_port or 443}')  # port (default to 443)
             cmds.append(f'{endpoint}')         # complete url
@@ -96,6 +111,8 @@ def client_cmds(client: str, endpoint: str, url_host: str, url_port: str | None,
 
 # Run client iters-many times.
 # Returns a list of output file names (packet traces in JSON).
+
+
 def run_client(netif: str, client: str, endpoint: str, iters: int) -> list[str]:
     print(f'--- START CLIENT: {client} ---\n')
 
@@ -110,7 +127,8 @@ def run_client(netif: str, client: str, endpoint: str, iters: int) -> list[str]:
     print(url_host, url_port, url_path)
 
     # generate client commands
-    cmds: list[str] = client_cmds(client, endpoint, url_host, url_port, url_path)
+    cmds: list[str] = client_cmds(
+        client, endpoint, url_host, url_port, url_path)
     if cmds == []:
         print(f'Error: client field is invalid ({client}), exiting.')
         return
@@ -118,7 +136,7 @@ def run_client(netif: str, client: str, endpoint: str, iters: int) -> list[str]:
     outputs = []
     for i in range(iters):
         print(f'--- CLIENT {client} : ITERATION {i} ---\n')
-        
+
         # timestamp files
         curr_time = time.strftime("%Y-%m-%d-%H:%M:%S", time.gmtime())
 
@@ -129,7 +147,8 @@ def run_client(netif: str, client: str, endpoint: str, iters: int) -> list[str]:
 
         # start recording pcap
         pcap_file = f'{TMP_PCAP_DIR}/out-{curr_time}.pcap'
-        pcap_process = run_pcap(netif, pcap_file, url_host, url_port, url_path, env)
+        pcap_process = run_pcap(
+            netif, pcap_file, url_host, url_port, url_path, env)
 
         # hit endpoint
         time.sleep(1)
@@ -138,19 +157,21 @@ def run_client(netif: str, client: str, endpoint: str, iters: int) -> list[str]:
         # stop recording pcap
         time.sleep(1)
         pcap_process.kill()
-        
+
         # read pcap into JSON
         time.sleep(1)
         json_file = f'{PCAP_OUT_DIR}/out-{curr_time}.json'
         outputs.append(json_file)
         read_pcap(is_h3, pcap_file, json_file, ssl_key_log_file, env)
-    
+
     print(f'--- STOP CLIENT: {client} ---\n')
     return outputs
 
 # Run benchmark across all clients.
 # For each client, returns a list containing all JSON output files.
-def run_benchmark(netif: str, config_file: str) -> dict[str, list[str]]:
+
+
+def run_benchmark(config_file: str) -> dict[str, list[str]]:
     print(f'--- START BENCHMARK ---\n')
 
     # Make directories
@@ -159,7 +180,7 @@ def run_benchmark(netif: str, config_file: str) -> dict[str, list[str]]:
     # Read JSON file containing configs
     with open(config_file) as f:
         d = json.load(f)
-    
+
     # Get clients
     clients: list[str] = d.get('clients')
     if clients is None:
@@ -171,18 +192,20 @@ def run_benchmark(netif: str, config_file: str) -> dict[str, list[str]]:
     if endpoint is None:
         print("Error: endpoint field is empty, exiting.")
         return
-    
+
     # Get number of iterations for each client
     iters: int = d.get('iters')
     if iters is None:
         iters = 1  # default number of iterations
 
     outputs = {}
+    netif = d.get("netif")
     for client in clients:
-        client_out: list[str] = run_client(netif, client, endpoint, iters)
+        client_out: list[str] = run_client(
+            netif, client, endpoint, iters)
         outputs[client] = client_out
-    
-    print(f'--- END BENCHMARK ---\n')    
+
+    print(f'--- END BENCHMARK ---\n')
     return outputs
 
 # test

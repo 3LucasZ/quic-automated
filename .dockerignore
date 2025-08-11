@@ -1,0 +1,21 @@
+# .git directory
+.git
+# Dockerfile itself
+*Dockerfile
+.dockerignore
+# Build artifacts / venvs
+build/
+dist/
+*.pyc
+__pycache__/
+.venv/
+env/
+# libs
+nghttp3/
+ngtcp2/
+# log folders
+pcap/
+tmp/
+ssl/
+plots/
+csv/
