@@ -1,11 +1,9 @@
 {
   "clients": [
-    "curl_h2",
-    "proxygen_h3",
-    "ngtcp2_h3"
+    "proxygen_h3"
   ],
   "endpoint": "https://scontent.xx.fbcdn.net/speedtest-1MB",
-  "iters": 3,
+  "iters": 1,
   "network": {
     "loss": 0.1,
     "delay": 50,

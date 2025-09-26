@@ -5,6 +5,7 @@ import pathlib
 import subprocess
 from urllib.parse import urlparse
 from dotenv import load_dotenv
+from playwright.sync_api import sync_playwright, Playwright
 
 # Load variables from the .env file into the environment
 # PROXYGEN_EXEC_PATH = '/home/shchien/proxygen/proxygen/_build/proxygen/httpserver/hq'
@@ -167,6 +168,73 @@ def run_client(netif: str, client: str, endpoint: str, iters: int) -> list[str]:
     print(f'--- STOP CLIENT: {client} ---\n')
     return outputs
 
+
+def run_client_2() -> list[str]:
+    netif = "en0"
+    client = "special"
+    website = "https://www.usenix.org/conference/srecon23emea/presentation/marx"
+    # endpoint = "https://www.youtube.com/b2559e09-4d3c-459f-bfb2-404e8d7cd28a"
+    endpoint = "https://www.youtube.com"
+    is_h3 = True
+    iters = 1
+    print(f'--- START CLIENT: {client} ---\n')
+
+    # parse endpoint
+    url_obj = urlparse(endpoint)
+    url_host: str = url_obj.hostname
+    url_port: str = url_obj.port
+    url_path: str = url_obj.path
+    print(url_host, url_port, url_path)
+
+    outputs = []
+    for i in range(iters):
+        print(f'--- CLIENT {client} : ITERATION {i} ---\n')
+
+        # timestamp files
+        curr_time = time.strftime("%Y-%m-%d-%H:%M:%S", time.gmtime())
+
+        # setup OS environment to log TLS keys
+        ssl_key_log_file = SSL_KEY_LOG_DIR.joinpath(f'ssl-{curr_time}.txt')
+        env = os.environ.copy()
+        env['SSLKEYLOGFILE'] = ssl_key_log_file
+
+        # hit endpoint
+        with sync_playwright() as playwright:
+            # navigate to video and click play
+            browser = playwright.chromium.launch(headless=False)
+            context = browser.new_context()
+            page = context.new_page()
+            page.goto(website, wait_until="load")
+            page.evaluate(
+                "window.scrollTo(0, document.body.scrollHeight * 0.4)")
+            page.wait_for_timeout(500)
+            viewport_size = page.viewport_size
+            center_x = viewport_size['width'] / 2
+            center_y = viewport_size['height'] / 2
+
+            def handle_response(response):
+                print(response.url())
+            page.on("response", handle_response)
+
+            # start recording pcap
+            pcap_file = f'{TMP_PCAP_DIR}/out-{curr_time}.pcap'
+            pcap_process = run_pcap(
+                netif, pcap_file, url_host, url_port, url_path, env)
+            page.mouse.click(center_x, center_y)
+            # stop recording pcap
+            time.sleep(5)
+            pcap_process.kill()
+
+        # read pcap into JSON
+        time.sleep(1)
+        json_file = f'{PCAP_OUT_DIR}/out-{curr_time}.json'
+        outputs.append(json_file)
+        read_pcap(is_h3, pcap_file, json_file, ssl_key_log_file, env)
+
+    print(f'--- STOP CLIENT: {client} ---\n')
+    return outputs
+
+
 # Run benchmark across all clients.
 # For each client, returns a list containing all JSON output files.
 
@@ -204,6 +272,8 @@ def run_benchmark(config_file: str) -> dict[str, list[str]]:
         client_out: list[str] = run_client(
             netif, client, endpoint, iters)
         outputs[client] = client_out
+    out = run_client_2()
+    outputs["special"] = out
 
     print(f'--- END BENCHMARK ---\n')
     return outputs
